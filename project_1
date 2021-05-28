@@ -2,6 +2,7 @@
 # Date: 27/05/2021
 # predict outcome of diabetes in subjects surveyed (>=21 years old of Pima Indian
 # heritage)
+# The R version used is 4.0.2.
 
 # import data 
 data=read.csv('diabetes.csv')
