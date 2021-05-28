@@ -1,0 +1,123 @@
+# Author: Lim Jia Qi
+# Date: 27/05/2021
+# predict outcome of diabetes in subjects surveyed (>=21 years old of Pima Indian
+# heritage)
+
+# import data 
+data=read.csv('diabetes.csv')
+# statistical summary 
+summary(data)
+str(data)
+
+# 2 -----------------------------------------------------------------------
+# Convert the outcome as factor for subsequent modeling purpose
+data$Outcome=as.factor(data$Outcome)
+# distribution of outcome (response)
+summary(data$Outcome)
+
+# 3 -----------------------------------------------------------------------
+# Split the data into train and test
+# For reproducibility
+set.seed(123)
+randn=runif(nrow(data))
+train_idx=randn<=0.8
+train=data[train_idx,]
+test=data[!train_idx,]
+# 613 train; 155 test. Roughly 80% training set and 20% test set
+
+# 4 -----------------------------------------------------------------------
+# Visualize the data using training data
+library(cdata)
+library(ggplot2)
+target='Outcome'
+vars=setdiff(colnames(train),target)
+
+# moving data from wide to tall form
+data_long=unpivot_to_blocks(data,nameForNewKeyColumn = "variables",
+                            nameForNewValueColumn = "values",columnsToTakeFrom = vars)
+str(data_long)
+
+# plot the histogram for each predictor
+ggplot(data_long,aes(x=values)) + 
+  geom_histogram(bins=10,fill="gray") +
+  facet_wrap(~variables,ncol = 3,scales="free")
+# plot the density plot for each predictor
+ggplot(data_long,aes(x=values)) + 
+  geom_density() +
+  facet_wrap(~variables,ncol = 3,scales="free")
+
+# boxplot for each variable with regards to their respective classes
+ggplot(data_long,aes(x=Outcome,y=values)) +
+  geom_boxplot(color="blue",fill="blue",alpha=0.2,notch=TRUE,
+               outlier.color="red",outlier.fill = "red",outlier.size = 2) +
+  facet_wrap(~variables,ncol = 3,scales = "free")
+
+# Correlation matrix
+cormat=cor(train[,vars])
+library(knitr)
+kable(round(cormat,2))
+
+# Visualize correlation matrix in heatmap
+library(reshape2)
+cormat[upper.tri(cormat)]=NA
+melted_cormat=melt(cormat,na.rm = TRUE)
+
+ggplot(data=melted_cormat,aes(Var1,Var2,fill=value)) +
+  geom_tile(color='white') +
+  scale_fill_gradient2(low = "blue", high="red",mid="white",midpoint = 0,
+                       limit=c(-1,1),space = "Lab",name="Correlation") +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45,vjust = 1,size = 12,hjust = 1)) +
+  coord_fixed() +
+  geom_text(aes(Var1,Var2,label=round(value,2)),color="black",size=3)
+
+# plot grouped scatter plot
+# Create the plots
+pairs(data[,vars], pch=20,cex=0.3,col=data$Outcome, 
+      lower.panel = NULL)
+
+# 5 -----------------------------------------------------------------------
+# Apply linear model (logistic regression) to tackle the problem of not just predicting
+# but knowing the insight (features importances/significance)
+model=glm(Outcome~.,data=train,family = binomial("logit"))
+summary(model)
+
+# prediction
+train$pred=predict(model,newdata = train,type = "response")
+test$pred=predict(model,newdata=test,type="response")
+
+# confusion matrix
+(confmat=table(truth=train$Outcome,predict=train$pred>0.5))
+(acc=sum(diag(confmat))/sum(confmat))
+(confmat_test=table(truth=test$Outcome,predict=test$pred>0.5))
+(acc_test=sum(diag(confmat_test))/sum(confmat_test))
+(precision=confmat_test[2,2]/sum(confmat_test[,2]))
+(recall=confmat_test[2,2]/sum(confmat_test[2,]))
+# The purpose of having both training and test accuracy computed is to know whether there 
+# is any issue of model underfitting/overfitting.
+
+# Visualize the classification results: double density plots and ROC plot
+library(WVPlots)
+plt=DoubleDensityPlot(test,xvar = "pred",truthVar = "Outcome",
+                  title = "Distribution of scores of LR model in test data")
+plt+geom_vline(xintercept = 0.5, color="red",linetype=2)
+
+# ROC curve
+test$Outcome_numeric=as.numeric(test$Outcome)-1
+ROCPlot(test,xvar='pred',truthVar = "Outcome_numeric",truthTarget = TRUE,
+        title = "Logistic regression test performance")
+library(sigr)
+calcAUC(test$pred,test$Outcome_numeric)
+
+# 6 -----------------------------------------------------------------------
+# PRT plot (modeling trade-off) to select other threshold
+train$Outcome_numeric=as.numeric(train$Outcome)-1
+plt=PRTPlot(test,'pred','Outcome_numeric',TRUE,plotvars = c('enrichment','recall'),
+        thresholdrange = c(0,1),title = 'Enrichment/recall vs threshold for LR model')
+plt+geom_vline(xintercept = 0.375,color="red",linetype=2)
+
+# Confusion matrix of test data
+(confmat_test=table(truth=test$Outcome,predict=test$pred>0.375))
+(acc_test=sum(diag(confmat_test))/sum(confmat_test))
+(precision=confmat_test[2,2]/sum(confmat_test[,2]))
+(recall=confmat_test[2,2]/sum(confmat_test[2,]))
