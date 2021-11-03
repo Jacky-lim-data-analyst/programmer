@@ -5,7 +5,7 @@
 library(readxl)   # read excel xlsx file
 
 # Set the default working directory to where the data is located. For example,
-# setwd("~/machine learning/test_2")
+# setwd(path)
 # load the data with headers as column names
 dat = read_excel('default of credit card clients.xls', sheet="Data", range = "B2:Y30002")
 
