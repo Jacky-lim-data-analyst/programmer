@@ -1,6 +1,6 @@
 library(readxl)   # read excel xlsx file
 
-setwd("~/machine learning/test_2")
+# set the working directory to where the data file is located by setwd("")
 # load the data with headers as column names
 dat = read_excel('default of credit card clients.xls', sheet="Data", range = "B2:Y30002")
 
