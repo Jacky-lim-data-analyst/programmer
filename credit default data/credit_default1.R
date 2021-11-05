@@ -177,6 +177,7 @@ library(sigr)
 
 # Precision recall trade-off
 # Double density plot
+library(WVPlots)
 DoubleDensityPlot(test, xvar = "pred_logreg", truthVar = "default", 
                   title = "Distribution of scores of LR model in test data") +
   geom_vline(xintercept = 0.5, color = 'red', linetype = 2)
